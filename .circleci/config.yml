@@ -6,15 +6,38 @@ jobs:
       - image: cimg/python:3.11
     steps:
       - checkout
+      - restore_cache: # ШАГ 1: Восстановление кэша (если он есть)
+          keys:
+            - v1-dependencies-{{ checksum "requirements.txt" }}
+            - v1-dependencies-
       - run:
           name: Install dependencies
-          command: pip install -r requirements.txt
+          command: |
+            pip install -r requirements.txt
+      - save_cache: # ШАГ 2: Сохранение кэша (если его не было или он изменился)
+          paths:
+            - ~/.cache/pip
+          key: v1-dependencies-{{ checksum "requirements.txt" }}
       - run:
           name: Run tests
           command: pytest
 
+  lint:
+    docker:
+      - image: cimg/python:3.11
+    steps:
+      - checkout
+      - restore_cache: # Восстанавливаем кэш и здесь
+          keys:
+            - v1-dependencies-{{ checksum "requirements.txt" }}
+            - v1-dependencies-
+      - run:
+          name: Check code formatting with Black
+          command: black --check --diff .
+
 workflows:
   version: 2
-  build-and-test:
+  build-test-and-lint:
     jobs:
       - test
+      - lint
